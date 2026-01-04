@@ -71,13 +71,17 @@ func (r *ClientRelayerTransactionResponse) GetTransaction() (*RelayerTransaction
 }
 
 // Wait polls until the transaction reaches a terminal state (mined or confirmed)
+// Polls for both STATE_MINED and STATE_CONFIRMED to match Python implementation behavior.
+// STATE_MINED means the transaction is included in a block, while STATE_CONFIRMED means
+// it has received sufficient confirmations. This allows callers to act on transactions
+// as soon as they're mined, without waiting for full confirmation.
 // Default polling: max 100 polls, every 2 seconds
 func (r *ClientRelayerTransactionResponse) Wait() (*RelayerTransaction, error) {
 	if r.client == nil {
 		return nil, &ClientError{Message: "client not configured"}
 	}
 
-	// Poll until mined or confirmed, similar to Python implementation
+	// Poll until mined or confirmed (matching Python's wait() method behavior)
 	targetStates := []RelayerTransactionState{STATE_MINED, STATE_CONFIRMED}
 	failState := STATE_FAILED
 

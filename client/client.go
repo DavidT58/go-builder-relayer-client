@@ -241,7 +241,7 @@ func (c *RelayClient) PollUntilState(transactionID string, states []models.Relay
 		pollFrequency = 2 // Default 2 seconds
 	}
 
-	// Log the polling action
+	// Log the polling action to stdout (matching Python implementation behavior)
 	fmt.Printf("Waiting for transaction %s matching states: %v...\n", transactionID, states)
 
 	// Create a map of target states for quick lookup
