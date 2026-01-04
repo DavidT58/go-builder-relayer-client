@@ -82,6 +82,8 @@ func SplitAndPackSig(signatureHex string) (string, error) {
 }
 
 // CreateSafeStructHash builds the EIP-712 struct hash for a Safe transaction
+// Note: This function only handles single transactions. For multiple transactions,
+// use BuildSafeTransactionRequestWithMultisend which aggregates them first.
 func CreateSafeStructHash(args *models.SafeTransactionArgs, sig *signer.Signer) (common.Hash, error) {
 	// Get the transaction data
 	var to common.Address
@@ -93,11 +95,8 @@ func CreateSafeStructHash(args *models.SafeTransactionArgs, sig *signer.Signer) 
 		return common.Hash{}, errors.NewRelayerClientError("no transactions provided", nil)
 	}
 
-	// If multiple transactions, we need to aggregate them
 	if len(args.Transactions) > 1 {
-		// This should use multisend - for now, we'll handle the first transaction
-		// In practice, this should call AggregateSafeTransaction
-		return common.Hash{}, errors.NewRelayerClientError("multiple transactions require multisend (not yet implemented in this function)", nil)
+		return common.Hash{}, errors.NewRelayerClientError("CreateSafeStructHash only supports single transactions; use BuildSafeTransactionRequestWithMultisend for multiple transactions", nil)
 	}
 
 	// Single transaction

@@ -44,8 +44,11 @@ func main() {
 	txn := models.SafeTransaction{
 		To:        usdc,
 		Operation: models.Call,
-		Data:      "0x095ea7b3", // approve calldata (placeholder)
-		Value:     "0",
+		// Example: ERC20 approve(spender, amount)
+		// This is a placeholder - replace with actual encoded approve parameters
+		// Format: 0x095ea7b3 + abi.encode(address spender, uint256 amount)
+		Data:  "0x095ea7b3",
+		Value: "0",
 	}
 
 	resp, err := c.Execute([]models.SafeTransaction{txn}, "approve USDC on CTF")
