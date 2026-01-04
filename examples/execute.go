@@ -4,12 +4,21 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/davidt58/go-builder-relayer-client/client"
 	"github.com/davidt58/go-builder-relayer-client/config"
 	"github.com/davidt58/go-builder-relayer-client/models"
 	"github.com/joho/godotenv"
 )
+
+func parseInt64(s string) int64 {
+	val, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		log.Fatalf("Failed to parse int64: %v", err)
+	}
+	return val
+}
 
 func main() {
 	godotenv.Load()
@@ -31,13 +40,15 @@ func main() {
 
 	// Create USDC approval transaction
 	usdc := "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-	ctf := "0x4d97dcd97ec945f40cf65f87097ace5ea0476045"
 
 	txn := models.SafeTransaction{
 		To:        usdc,
 		Operation: models.Call,
-		Data:      "0x095ea7b3.. .", // approve calldata
-		Value:     "0",
+		// Example: ERC20 approve(spender, amount)
+		// This is a placeholder - replace with actual encoded approve parameters
+		// Format: 0x095ea7b3 + abi.encode(address spender, uint256 amount)
+		Data:  "0x095ea7b3",
+		Value: "0",
 	}
 
 	resp, err := c.Execute([]models.SafeTransaction{txn}, "approve USDC on CTF")
@@ -45,7 +56,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Transaction submitted:", resp.TransactionHash)
+	fmt.Println("Transaction ID:", resp.TransactionID)
 
 	result, err := resp.Wait()
 	if err != nil {

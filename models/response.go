@@ -33,8 +33,14 @@ type ErrorResponse struct {
 type ClientRelayerTransactionResponse struct {
 	// TransactionID is the unique identifier for the transaction
 	TransactionID string
-	// client reference will be set when creating responses (Phase 8)
-	client interface{}
+	// client reference for making API calls
+	client RelayClientInterface
+}
+
+// RelayClientInterface defines the interface needed by ClientRelayerTransactionResponse
+type RelayClientInterface interface {
+	GetTransaction(transactionID string) (*RelayerTransaction, error)
+	PollUntilState(transactionID string, states []RelayerTransactionState, failState RelayerTransactionState, maxPolls, pollFrequency int) (*RelayerTransaction, error)
 }
 
 // NewClientRelayerTransactionResponse creates a new response wrapper
@@ -42,4 +48,65 @@ func NewClientRelayerTransactionResponse(transactionID string) *ClientRelayerTra
 	return &ClientRelayerTransactionResponse{
 		TransactionID: transactionID,
 	}
+}
+
+// SetClient sets the client reference for making API calls
+func (r *ClientRelayerTransactionResponse) SetClient(client RelayClientInterface) {
+	r.client = client
+}
+
+// GetTransaction fetches the current transaction details
+func (r *ClientRelayerTransactionResponse) GetTransaction() (*RelayerTransaction, error) {
+	if r.client == nil {
+		return nil, &ClientError{Message: "client not configured"}
+	}
+	return r.client.GetTransaction(r.TransactionID)
+}
+
+// Wait polls until the transaction reaches a terminal state (confirmed, failed, or invalid)
+// Default polling: max 100 polls, every 2 seconds
+func (r *ClientRelayerTransactionResponse) Wait() (*RelayerTransaction, error) {
+	if r.client == nil {
+		return nil, &ClientError{Message: "client not configured"}
+	}
+
+	// Poll until confirmed, failed, or invalid
+	targetStates := []RelayerTransactionState{STATE_CONFIRMED}
+	failState := STATE_FAILED
+
+	return r.client.PollUntilState(r.TransactionID, targetStates, failState, 100, 2)
+}
+
+// WaitWithOptions polls until the transaction reaches a terminal state with custom options
+func (r *ClientRelayerTransactionResponse) WaitWithOptions(maxPolls, pollFrequency int) (*RelayerTransaction, error) {
+	if r.client == nil {
+		return nil, &ClientError{Message: "client not configured"}
+	}
+
+	targetStates := []RelayerTransactionState{STATE_CONFIRMED}
+	failState := STATE_FAILED
+
+	return r.client.PollUntilState(r.TransactionID, targetStates, failState, maxPolls, pollFrequency)
+}
+
+// WaitUntilMined polls until the transaction is mined (may not be confirmed yet)
+func (r *ClientRelayerTransactionResponse) WaitUntilMined() (*RelayerTransaction, error) {
+	if r.client == nil {
+		return nil, &ClientError{Message: "client not configured"}
+	}
+
+	targetStates := []RelayerTransactionState{STATE_MINED, STATE_CONFIRMED}
+	failState := STATE_FAILED
+
+	return r.client.PollUntilState(r.TransactionID, targetStates, failState, 100, 2)
+}
+
+// ClientError represents an error from the client helper methods
+type ClientError struct {
+	Message string
+}
+
+// Error implements the error interface
+func (e *ClientError) Error() string {
+	return e.Message
 }
