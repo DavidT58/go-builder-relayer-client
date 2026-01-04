@@ -135,34 +135,48 @@ func (c *RelayClient) GetDeployed(safeAddress string) (bool, error) {
 // Deploy creates and submits a Safe wallet deployment transaction
 func (c *RelayClient) Deploy() (*models.ClientRelayerTransactionResponse, error) {
 	// Ensure signer is configured
+	fmt.Println("[DEBUG] Deploy: Checking signer configuration...")
 	if err := c.assertSignerNeeded(); err != nil {
 		return nil, err
 	}
 
 	// Ensure builder credentials are configured
+	fmt.Println("[DEBUG] Deploy: Checking builder credentials...")
 	if err := c.assertBuilderCredsNeeded(); err != nil {
 		return nil, err
 	}
 
 	// Get expected Safe address
+	fmt.Println("[DEBUG] Deploy: Deriving Safe address...")
 	safeAddress, err := c.GetExpectedSafe()
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("[DEBUG] Deploy: Signer address: %s\n", c.signer.AddressHex())
+	fmt.Printf("[DEBUG] Deploy: Safe address: %s\n", safeAddress)
 
 	// Check if already deployed
+	fmt.Printf("[DEBUG] Deploy: Checking if Safe is already deployed at %s...\n", safeAddress)
 	deployed, err := c.GetDeployed(safeAddress)
 	if err == nil && deployed {
 		return nil, errors.NewRelayerClientError(fmt.Sprintf("Safe already deployed at %s", safeAddress), nil)
 	}
+	if err != nil {
+		fmt.Printf("[DEBUG] Deploy: GetDeployed error (continuing): %v\n", err)
+	}
+	fmt.Printf("[DEBUG] Deploy: Safe deployed status: %v\n", deployed)
 
 	// Get nonce
+	fmt.Printf("[DEBUG] Deploy: Getting nonce for address %s...\n", c.signer.AddressHex())
 	nonceResp, err := c.GetNonce(c.signer.AddressHex(), string(models.EOA))
 	if err != nil {
+		fmt.Printf("[DEBUG] Deploy: GetNonce failed: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("[DEBUG] Deploy: Nonce: %s\n", nonceResp.Nonce)
 
 	// Build Safe creation transaction request
+	fmt.Println("[DEBUG] Deploy: Building Safe creation transaction request...")
 	createArgs := &models.SafeCreateTransactionArgs{
 		SignerAddress: c.signer.AddressHex(),
 		SafeAddress:   safeAddress,
@@ -172,10 +186,13 @@ func (c *RelayClient) Deploy() (*models.ClientRelayerTransactionResponse, error)
 
 	request, err := builder.BuildSafeCreateTransactionRequest(createArgs, c.signer, c.chainID)
 	if err != nil {
+		fmt.Printf("[DEBUG] Deploy: BuildSafeCreateTransactionRequest failed: %v\n", err)
 		return nil, err
 	}
+	fmt.Println("[DEBUG] Deploy: Transaction request built successfully")
 
 	// Submit the transaction
+	fmt.Println("[DEBUG] Deploy: Submitting transaction to relayer...")
 	return c.submitTransaction(request)
 }
 
@@ -296,17 +313,29 @@ func (c *RelayClient) GetExpectedSafe() (string, error) {
 
 // submitTransaction submits a transaction request to the relayer
 func (c *RelayClient) submitTransaction(request *models.TransactionRequest) (*models.ClientRelayerTransactionResponse, error) {
+	fmt.Printf("[DEBUG] submitTransaction: Endpoint: %s\n", SUBMIT_TRANSACTION)
+	fmt.Printf("[DEBUG] submitTransaction: Request type: %s\n", request.Type)
+	fmt.Printf("[DEBUG] submitTransaction: Safe address: %s\n", request.SafeAddress)
+	fmt.Printf("[DEBUG] submitTransaction: Chain ID: %d\n", request.ChainID)
+	fmt.Printf("[DEBUG] submitTransaction: Nonce: %s\n", request.Nonce)
+	
 	// Generate authentication headers
+	fmt.Println("[DEBUG] submitTransaction: Generating authentication headers...")
 	headers, err := c.generateBuilderHeaders("POST", SUBMIT_TRANSACTION, request)
 	if err != nil {
+		fmt.Printf("[DEBUG] submitTransaction: Failed to generate headers: %v\n", err)
 		return nil, err
 	}
+	fmt.Println("[DEBUG] submitTransaction: Headers generated successfully")
 
 	// Submit the transaction
+	fmt.Printf("[DEBUG] submitTransaction: Submitting to %s%s\n", c.httpClient.GetBaseURL(), SUBMIT_TRANSACTION)
 	var response models.SubmitTransactionResponse
 	if err := c.httpClient.PostJSON(SUBMIT_TRANSACTION, headers, request, &response); err != nil {
+		fmt.Printf("[DEBUG] submitTransaction: Request failed: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("[DEBUG] submitTransaction: Success! Transaction ID: %s\n", response.TransactionID)
 
 	// Create response wrapper
 	clientResponse := models.NewClientRelayerTransactionResponse(response.TransactionID)
