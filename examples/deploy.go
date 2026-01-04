@@ -20,6 +20,8 @@ func parseInt64(s string) int64 {
 }
 
 func main() {
+	fmt.Println("starting...")
+	
 	godotenv.Load()
 
 	relayerURL := os.Getenv("RELAYER_URL")
@@ -42,12 +44,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Transaction ID:", resp.TransactionID)
+	fmt.Println(resp)
 
 	txn, err := resp.Wait()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Deployed:", txn)
+	fmt.Println(txn.ToFormattedString())
 }

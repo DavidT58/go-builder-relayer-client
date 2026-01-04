@@ -241,6 +241,9 @@ func (c *RelayClient) PollUntilState(transactionID string, states []models.Relay
 		pollFrequency = 2 // Default 2 seconds
 	}
 
+	// Log the polling action
+	fmt.Printf("Waiting for transaction %s matching states: %v...\n", transactionID, states)
+
 	// Create a map of target states for quick lookup
 	targetStates := make(map[models.RelayerTransactionState]bool)
 	for _, state := range states {

@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -142,6 +143,72 @@ func TestRelayerTransaction_IsMined(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.tx.IsMined(); got != tt.expect {
 				t.Errorf("IsMined() = %v, want %v", got, tt.expect)
+			}
+		})
+	}
+}
+
+func TestRelayerTransaction_ToFormattedString(t *testing.T) {
+	hash := "0xabc123"
+	blockNum := int64(12345)
+	metadata := "test metadata"
+	
+	tests := []struct {
+		name     string
+		tx       RelayerTransaction
+		contains []string
+	}{
+		{
+			name: "with hash and block number",
+			tx: RelayerTransaction{
+				TransactionID: "tx-123",
+				State:         STATE_MINED,
+				Type:          SAFE,
+				SafeAddress:   "0x1234",
+				ChainID:       137,
+				Hash:          &hash,
+				BlockNumber:   &blockNum,
+				CreatedAt:     "2024-01-01",
+				UpdatedAt:     "2024-01-02",
+			},
+			contains: []string{"tx-123", "STATE_MINED", "0xabc123", "12345", "0x1234"},
+		},
+		{
+			name: "without optional fields",
+			tx: RelayerTransaction{
+				TransactionID: "tx-456",
+				State:         STATE_NEW,
+				Type:          SAFE_CREATE,
+				SafeAddress:   "0x5678",
+				ChainID:       80002,
+				CreatedAt:     "2024-01-03",
+				UpdatedAt:     "2024-01-04",
+			},
+			contains: []string{"tx-456", "STATE_NEW", "nil", "0x5678"},
+		},
+		{
+			name: "with metadata",
+			tx: RelayerTransaction{
+				TransactionID: "tx-789",
+				State:         STATE_CONFIRMED,
+				Type:          SAFE,
+				SafeAddress:   "0x9abc",
+				ChainID:       137,
+				Metadata:      &metadata,
+				CreatedAt:     "2024-01-05",
+				UpdatedAt:     "2024-01-06",
+			},
+			contains: []string{"tx-789", "test metadata", "0x9abc"},
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.tx.ToFormattedString()
+			for _, substr := range tt.contains {
+				if !strings.Contains(got, substr) {
+					t.Errorf("ToFormattedString() = %s, want to contain %s", got, substr)
+				}
 			}
 		})
 	}
