@@ -77,10 +77,12 @@ func (c *RelayClient) GetNonce(signerAddress, signerType string) (*models.NonceR
 	params := url.Values{}
 	params.Add("signerAddress", strings.ToLower(signerAddress))
 	params.Add("signerType", signerType)
+	params.Add("chainId", fmt.Sprintf("%d", c.chainID))
 	path := fmt.Sprintf("%s?%s", GET_NONCE, params.Encode())
 	
 	fmt.Printf("[DEBUG] GetNonce: Original address: %s\n", signerAddress)
 	fmt.Printf("[DEBUG] GetNonce: Lowercase address: %s\n", strings.ToLower(signerAddress))
+	fmt.Printf("[DEBUG] GetNonce: Chain ID: %d\n", c.chainID)
 	fmt.Printf("[DEBUG] GetNonce: Constructed path: %s\n", path)
 
 	// Make GET request
@@ -134,10 +136,12 @@ func (c *RelayClient) GetDeployed(safeAddress string) (bool, error) {
 	// Convert address to lowercase as the API requires it
 	params := url.Values{}
 	params.Add("safeAddress", strings.ToLower(safeAddress))
+	params.Add("chainId", fmt.Sprintf("%d", c.chainID))
 	path := fmt.Sprintf("%s?%s", GET_DEPLOYED, params.Encode())
 	
 	fmt.Printf("[DEBUG] GetDeployed: Original address: %s\n", safeAddress)
 	fmt.Printf("[DEBUG] GetDeployed: Lowercase address: %s\n", strings.ToLower(safeAddress))
+	fmt.Printf("[DEBUG] GetDeployed: Chain ID: %d\n", c.chainID)
 	fmt.Printf("[DEBUG] GetDeployed: Constructed path: %s\n", path)
 
 	// Make GET request
