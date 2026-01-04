@@ -2,6 +2,7 @@ package builder
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/davidt58/go-builder-relayer-client/config"
@@ -69,6 +70,12 @@ func CreateSafeCreateSignature(args *models.SafeCreateTransactionArgs, sig *sign
 // BuildSafeCreateTransactionRequest builds a complete Safe creation transaction request
 // This is the main function to use when deploying a new Safe wallet
 func BuildSafeCreateTransactionRequest(args *models.SafeCreateTransactionArgs, sig *signer.Signer, chainID int64) (*models.TransactionRequest, error) {
+	fmt.Println("[DEBUG] BuildSafeCreateTransactionRequest: Starting...")
+	fmt.Printf("[DEBUG]   Signer address: %s\n", args.SignerAddress)
+	fmt.Printf("[DEBUG]   Safe address: %s\n", args.SafeAddress)
+	fmt.Printf("[DEBUG]   Nonce: %s\n", args.Nonce)
+	fmt.Printf("[DEBUG]   Chain ID: %d\n", chainID)
+	
 	if args == nil {
 		return nil, errors.ErrMissingRequiredField("args")
 	}
@@ -81,12 +88,17 @@ func BuildSafeCreateTransactionRequest(args *models.SafeCreateTransactionArgs, s
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("[DEBUG]   Factory: %s\n", contractConfig.SafeFactory)
+	fmt.Printf("[DEBUG]   Singleton: %s\n", contractConfig.SafeSingleton)
+	fmt.Printf("[DEBUG]   Fallback Handler: %s\n", contractConfig.SafeFallbackHandler)
 
 	// Create signature
+	fmt.Println("[DEBUG]   Creating signature...")
 	signature, err := CreateSafeCreateSignature(args, sig, chainID)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("[DEBUG]   Signature created: %s\n", signature)
 
 	// Split and pack the signature
 	packedSig, err := SplitAndPackSig(signature)

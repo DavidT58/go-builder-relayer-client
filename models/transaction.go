@@ -1,6 +1,9 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // OperationType represents the type of operation for a Safe transaction
 type OperationType int
@@ -172,6 +175,28 @@ func (t *RelayerTransaction) IsConfirmed() bool {
 // IsFailed returns true if the transaction has failed
 func (t *RelayerTransaction) IsFailed() bool {
 	return t.State == STATE_FAILED || t.State == STATE_INVALID
+}
+
+// ToFormattedString returns a formatted string representation of the transaction
+// similar to Python's dictionary output
+func (t *RelayerTransaction) ToFormattedString() string {
+	hashStr := "nil"
+	if t.Hash != nil {
+		hashStr = fmt.Sprintf("\"%s\"", *t.Hash)
+	}
+	
+	blockNumStr := "nil"
+	if t.BlockNumber != nil {
+		blockNumStr = fmt.Sprintf("%d", *t.BlockNumber)
+	}
+	
+	metadataStr := "nil"
+	if t.Metadata != nil {
+		metadataStr = fmt.Sprintf("\"%s\"", *t.Metadata)
+	}
+	
+	return fmt.Sprintf("Transaction: {transactionID: \"%s\", state: \"%s\", type: \"%s\", safeAddress: \"%s\", chainId: %d, hash: %s, blockNumber: %s, createdAt: \"%s\", updatedAt: \"%s\", metadata: %s}",
+		t.TransactionID, t.State, t.Type, t.SafeAddress, t.ChainID, hashStr, blockNumStr, t.CreatedAt, t.UpdatedAt, metadataStr)
 }
 
 // SignerType represents the type of signer

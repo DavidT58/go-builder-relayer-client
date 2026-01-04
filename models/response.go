@@ -1,5 +1,7 @@
 package models
 
+import "fmt"
+
 // SubmitTransactionResponse represents the response from submitting a transaction
 type SubmitTransactionResponse struct {
 	// TransactionID is the unique identifier for the submitted transaction
@@ -37,6 +39,11 @@ type ClientRelayerTransactionResponse struct {
 	client RelayClientInterface
 }
 
+// String returns a string representation of the response
+func (r *ClientRelayerTransactionResponse) String() string {
+	return fmt.Sprintf("Response{TransactionID: \"%s\"}", r.TransactionID)
+}
+
 // RelayClientInterface defines the interface needed by ClientRelayerTransactionResponse
 type RelayClientInterface interface {
 	GetTransaction(transactionID string) (*RelayerTransaction, error)
@@ -63,15 +70,19 @@ func (r *ClientRelayerTransactionResponse) GetTransaction() (*RelayerTransaction
 	return r.client.GetTransaction(r.TransactionID)
 }
 
-// Wait polls until the transaction reaches a terminal state (confirmed, failed, or invalid)
+// Wait polls until the transaction reaches a terminal state (mined or confirmed)
+// Polls for both STATE_MINED and STATE_CONFIRMED to match Python implementation behavior.
+// Note: STATE_MINED is not a terminal state (it can progress to STATE_CONFIRMED),
+// but it's considered a valid completion state for this method. This allows callers
+// to act on transactions as soon as they're mined, without waiting for full confirmation.
 // Default polling: max 100 polls, every 2 seconds
 func (r *ClientRelayerTransactionResponse) Wait() (*RelayerTransaction, error) {
 	if r.client == nil {
 		return nil, &ClientError{Message: "client not configured"}
 	}
 
-	// Poll until confirmed, failed, or invalid
-	targetStates := []RelayerTransactionState{STATE_CONFIRMED}
+	// Poll until mined or confirmed (matching Python's wait() method behavior)
+	targetStates := []RelayerTransactionState{STATE_MINED, STATE_CONFIRMED}
 	failState := STATE_FAILED
 
 	return r.client.PollUntilState(r.TransactionID, targetStates, failState, 100, 2)

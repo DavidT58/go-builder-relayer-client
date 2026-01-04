@@ -36,3 +36,8 @@ Thumbs.db
 
 # Dependencies
 /vendor/
+# Example binaries
+deploy
+execute
+get_nonce
+get_transaction

@@ -3,8 +3,10 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/davidt58/go-builder-relayer-client/errors"
@@ -19,6 +21,9 @@ type Client struct {
 
 // NewClient creates a new HTTP client
 func NewClient(baseURL string) *Client {
+	// Strip trailing slash from baseURL to avoid double slashes in URLs
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	
 	return &Client{
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -29,6 +34,9 @@ func NewClient(baseURL string) *Client {
 
 // NewClientWithTimeout creates a new HTTP client with a custom timeout
 func NewClientWithTimeout(baseURL string, timeout time.Duration) *Client {
+	// Strip trailing slash from baseURL to avoid double slashes in URLs
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	
 	return &Client{
 		httpClient: &http.Client{
 			Timeout: timeout,
@@ -41,15 +49,24 @@ func NewClientWithTimeout(baseURL string, timeout time.Duration) *Client {
 func (c *Client) Request(method, path string, headers map[string]string, body interface{}) ([]byte, error) {
 	// Construct full URL
 	url := c.baseURL + path
+	fmt.Printf("[DEBUG] HTTP Request: %s %s\n", method, url)
 
 	// Marshal body if present
 	var bodyReader io.Reader
+	var bodyBytes []byte
 	if body != nil {
-		bodyBytes, err := json.Marshal(body)
+		var err error
+		bodyBytes, err = json.Marshal(body)
 		if err != nil {
 			return nil, errors.ErrJSONMarshalFailed(err)
 		}
 		bodyReader = bytes.NewReader(bodyBytes)
+		// Print first 500 chars of body for debugging
+		bodyPreview := string(bodyBytes)
+		if len(bodyPreview) > 500 {
+			bodyPreview = bodyPreview[:500] + "..."
+		}
+		fmt.Printf("[DEBUG] Request body: %s\n", bodyPreview)
 	}
 
 	// Create request
@@ -63,22 +80,35 @@ func (c *Client) Request(method, path string, headers map[string]string, body in
 	req.Header.Set("Accept", "application/json")
 
 	// Set custom headers
+	fmt.Println("[DEBUG] Request headers:")
 	for key, value := range headers {
 		req.Header.Set(key, value)
+		// Mask sensitive headers
+		if key == "POLY-SIGNATURE" || key == "POLY-API-KEY" {
+			fmt.Printf("  %s: %s...%s\n", key, value[:8], value[len(value)-8:])
+		} else {
+			fmt.Printf("  %s: %s\n", key, value)
+		}
 	}
 
 	// Execute request
+	fmt.Println("[DEBUG] Sending request...")
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		fmt.Printf("[DEBUG] Request failed: %v\n", err)
 		return nil, errors.ErrHTTPRequestFailed(err)
 	}
 	defer resp.Body.Close()
+
+	fmt.Printf("[DEBUG] Response status: %d %s\n", resp.StatusCode, resp.Status)
 
 	// Read response body
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.ErrHTTPRequestFailed(err)
 	}
+
+	fmt.Printf("[DEBUG] Response body: %s\n", string(respBody))
 
 	// Check for error status codes
 	if resp.StatusCode >= 400 {
