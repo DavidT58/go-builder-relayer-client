@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/davidt58/go-builder-relayer-client/errors"
@@ -19,6 +20,9 @@ type Client struct {
 
 // NewClient creates a new HTTP client
 func NewClient(baseURL string) *Client {
+	// Strip trailing slash from baseURL to avoid double slashes in URLs
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	
 	return &Client{
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -29,6 +33,9 @@ func NewClient(baseURL string) *Client {
 
 // NewClientWithTimeout creates a new HTTP client with a custom timeout
 func NewClientWithTimeout(baseURL string, timeout time.Duration) *Client {
+	// Strip trailing slash from baseURL to avoid double slashes in URLs
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	
 	return &Client{
 		httpClient: &http.Client{
 			Timeout: timeout,
