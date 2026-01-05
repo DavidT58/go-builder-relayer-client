@@ -10,6 +10,8 @@ import (
 
 // SAFE_INIT_CODE_HASH is the pre-computed keccak256 hash of the Safe proxy init code
 // This constant matches the Python implementation's SAFE_INIT_CODE_HASH
+// This hash is derived from the Safe proxy factory's deployment bytecode for creating minimal proxies (EIP-1167)
+// Reference: https://github.com/safe-global/safe-contracts
 const SAFE_INIT_CODE_HASH = "0x2bce2127ff07fb632d16c8347c4ebf501f4841168bed00d9e6ef715ddb6fcecf"
 
 // DeriveSafeAddress calculates the Safe address using CREATE2

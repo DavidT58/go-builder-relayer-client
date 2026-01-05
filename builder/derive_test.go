@@ -160,9 +160,6 @@ func TestEncodeSafeSetupParams(t *testing.T) {
 	}
 }
 
-// TestCalculateCreate2Address and TestBuildProxyInitCode removed
-// These functions were removed as part of the simplification to match Python implementation
-
 func TestVerifySafeAddress(t *testing.T) {
 	signerAddr := common.HexToAddress(testSignerAddress)
 
@@ -253,13 +250,13 @@ func TestDeriveSafeAddressWithNonce(t *testing.T) {
 }
 
 // TestDeriveSafeAddress_KnownAddress tests that our implementation produces the expected address
-// This validates against the Python implementation
+// This validates against the Python implementation for testChainID (80002 - Polygon Amoy)
 func TestDeriveSafeAddress_KnownAddress(t *testing.T) {
 	// Test with a known signer address
 	signerAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 	
-	// Expected Safe address for Polygon Amoy (chain ID 80002)
-	// This is calculated using the Python implementation's logic:
+	// Expected Safe address calculated using the Python implementation's logic
+	// Parameters:
 	// - Factory: 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2
 	// - Salt: keccak256(abi.encode(signerAddress))
 	// - SAFE_INIT_CODE_HASH: 0x2bce2127ff07fb632d16c8347c4ebf501f4841168bed00d9e6ef715ddb6fcecf
