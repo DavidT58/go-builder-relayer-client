@@ -8,6 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+// SAFE_INIT_CODE_HASH is the pre-computed keccak256 hash of the Safe proxy init code
+// This constant matches the Python implementation's SAFE_INIT_CODE_HASH
+const SAFE_INIT_CODE_HASH = "0x2bce2127ff07fb632d16c8347c4ebf501f4841168bed00d9e6ef715ddb6fcecf"
+
 // DeriveSafeAddress calculates the Safe address using CREATE2
 // This matches the Python implementation's derive_safe_address function
 func DeriveSafeAddress(signerAddress common.Address, chainID int64) (common.Address, error) {
@@ -17,24 +21,33 @@ func DeriveSafeAddress(signerAddress common.Address, chainID int64) (common.Addr
 		return common.Address{}, err
 	}
 
-	// Build the initializer data for the Safe setup
-	initializerData, err := buildSafeInitializer(signerAddress, contractConfig)
-	if err != nil {
-		return common.Address{}, err
-	}
+	// Get factory address
+	factoryAddress := common.HexToAddress(contractConfig.SafeFactory)
 
-	// Calculate the CREATE2 address
-	safeAddress := calculateCreate2Address(
-		common.HexToAddress(contractConfig.SafeFactory),
-		common.HexToAddress(contractConfig.SafeSingleton),
-		initializerData,
-	)
+	// Calculate salt as keccak256(abi.encode(signerAddress))
+	// In Solidity ABI encoding, an address is left-padded to 32 bytes
+	salt := crypto.Keccak256Hash(common.LeftPadBytes(signerAddress.Bytes(), 32))
+
+	// Get the init code hash
+	initCodeHash := common.HexToHash(SAFE_INIT_CODE_HASH)
+
+	// Calculate CREATE2 address
+	// Formula: keccak256(0xff ++ factoryAddress ++ salt ++ initCodeHash)[12:]
+	data := make([]byte, 1+20+32+32)
+	data[0] = 0xff
+	copy(data[1:21], factoryAddress.Bytes())
+	copy(data[21:53], salt.Bytes())
+	copy(data[53:85], initCodeHash.Bytes())
+
+	hash := crypto.Keccak256Hash(data)
+	safeAddress := common.BytesToAddress(hash[12:])
 
 	return safeAddress, nil
 }
 
 // buildSafeInitializer creates the initializer data for Safe.setup()
 // This encodes the call to setup(owners, threshold, to, data, fallbackHandler, paymentToken, payment, paymentReceiver)
+// This function is still needed for Safe creation transactions (not for address derivation)
 func buildSafeInitializer(signerAddress common.Address, contractConfig *config.ContractConfig) ([]byte, error) {
 	// Safe.setup() function selector: 0xb63e800d
 	setupSelector := crypto.Keccak256([]byte("setup(address[],uint256,address,bytes,address,address,uint256,address)"))[:4]
@@ -146,90 +159,6 @@ func encodeSafeSetupParams(
 	}
 
 	return encoded, nil
-}
-
-// calculateCreate2Address calculates the CREATE2 address
-// Formula: keccak256(0xff ++ deployerAddress ++ salt ++ keccak256(initCode))[12:]
-func calculateCreate2Address(factoryAddress, singleton common.Address, initializer []byte) common.Address {
-	// Build the init code for the Safe proxy
-	// The init code is the proxy bytecode with the singleton address appended
-	initCode := buildProxyInitCode(singleton, initializer)
-
-	// Calculate the init code hash
-	initCodeHash := crypto.Keccak256Hash(initCode)
-
-	// Salt is the keccak256 of the initializer
-	salt := crypto.Keccak256Hash(initializer)
-
-	// Calculate CREATE2 address
-	// keccak256(0xff ++ factoryAddress ++ salt ++ initCodeHash)[12:]
-	data := make([]byte, 1+20+32+32)
-	data[0] = 0xff
-	copy(data[1:21], factoryAddress.Bytes())
-	copy(data[21:53], salt.Bytes())
-	copy(data[53:85], initCodeHash.Bytes())
-
-	hash := crypto.Keccak256Hash(data)
-	return common.BytesToAddress(hash[12:])
-}
-
-// buildProxyInitCode builds the init code for the Safe proxy
-// This is the proxy creation bytecode that will deploy a minimal proxy to the singleton
-func buildProxyInitCode(singleton common.Address, initializer []byte) []byte {
-	// Safe uses a minimal proxy pattern (EIP-1167)
-	// The proxy bytecode is:
-	// 0x608060405234801561001057600080fd5b506040516101e63803806101e68339818101604052602081101561003357600080fd5b8101908080519060200190929190505050600073ffffffffffffffffffffffffffffffffffffffff168173ffffffffffffffffffffffffffffffffffffffff1614156100ca576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260228152602001806101c46022913960400191505060405180910390fd5b806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505060ab806101196000396000f3fe608060405273ffffffffffffffffffffffffffffffffffffffff600054167fa619486e0000000000000000000000000000000000000000000000000000000060003514156050578060005260206000f35b3660008037600080366000845af43d6000803e60008114156070573d6000fd5b3d6000f3fea2646970667358221220d1429297349653a4918076d650332de1a1068c5f3e07c5c82360c277770b955264736f6c63430007060033
-	//
-	// For simplicity, we'll use a standard proxy creation pattern
-	// The actual bytecode calculation matches the Safe Proxy Factory's createProxyWithNonce function
-
-	// Standard minimal proxy bytecode (EIP-1167 clone)
-	// 0x3d602d80600a3d3981f3363d3d373d3d3d363d73bebebebebebebebebebebebebebebebebebebebe5af43d82803e903d91602b57fd5bf3
-	// where "bebebebe..." is replaced with the singleton address
-
-	proxyCode := []byte{
-		0x60, 0x2d, // PUSH1 0x2d (proxy code size)
-		0x80,       // DUP1
-		0x60, 0x0a, // PUSH1 0x0a (offset)
-		0x3d, // RETURNDATASIZE
-		0x39, // CODECOPY
-		0x81, // DUP2
-		0xf3, // RETURN
-		// Proxy runtime code:
-		0x36, // CALLDATASIZE
-		0x3d, // RETURNDATASIZE
-		0x3d, // RETURNDATASIZE
-		0x37, // CALLDATACOPY
-		0x3d, // RETURNDATASIZE
-		0x3d, // RETURNDATASIZE
-		0x3d, // RETURNDATASIZE
-		0x36, // CALLDATASIZE
-		0x3d, // RETURNDATASIZE
-		0x73, // PUSH20
-	}
-
-	// Append singleton address
-	proxyCode = append(proxyCode, singleton.Bytes()...)
-
-	// Append rest of proxy code
-	proxyCode = append(proxyCode, []byte{
-		0x5a,       // GAS
-		0xf4,       // DELEGATECALL
-		0x3d,       // RETURNDATASIZE
-		0x82,       // DUP3
-		0x80,       // DUP1
-		0x3e,       // RETURNDATACOPY
-		0x90,       // SWAP1
-		0x3d,       // RETURNDATASIZE
-		0x91,       // SWAP2
-		0x60, 0x2b, // PUSH1 0x2b
-		0x57, // JUMPI
-		0xfd, // REVERT
-		0x5b, // JUMPDEST
-		0xf3, // RETURN
-	}...)
-
-	return proxyCode
 }
 
 // DeriveSafeAddressWithNonce calculates the Safe address with a specific nonce
