@@ -139,6 +139,8 @@ func (c *RelayClient) GetDeployed(safeAddress string) (bool, error) {
 
 // Deploy creates and submits a Safe wallet deployment transaction
 func (c *RelayClient) Deploy() (*models.ClientRelayerTransactionResponse, error) {
+	c.logger.Println("Starting Safe wallet deployment...")
+
 	// Ensure signer is configured
 	if err := c.assertSignerNeeded(); err != nil {
 		return nil, err
@@ -149,35 +151,66 @@ func (c *RelayClient) Deploy() (*models.ClientRelayerTransactionResponse, error)
 		return nil, err
 	}
 
+	signerAddress := c.signer.AddressHex()
+	c.logger.Printf("Signer address: %s", signerAddress)
+	c.logger.Printf("Chain ID: %d", c.chainID)
+
 	// Get expected Safe address
 	safeAddress, err := c.GetExpectedSafe()
 	if err != nil {
+		c.logger.Printf("Error deriving Safe address: %v", err)
 		return nil, err
 	}
+	c.logger.Printf("Derived Safe address: %s", safeAddress)
 
 	// Check if already deployed
+	c.logger.Println("Checking if Safe is already deployed...")
 	deployed, err := c.GetDeployed(safeAddress)
 	if err == nil && deployed {
-		return nil, errors.NewRelayerClientError(fmt.Sprintf("Safe already deployed at %s", safeAddress), nil)
+		errMsg := fmt.Sprintf("Safe already deployed at %s", safeAddress)
+		c.logger.Println(errMsg)
+		return nil, errors.NewRelayerClientError(errMsg, nil)
 	}
+	c.logger.Println("Safe not yet deployed, proceeding with deployment")
 
 	// For SAFE-CREATE transactions, nonce is always "0" for the EOA signature
 	// The relayer will handle the actual nonce internally
 	// Build Safe creation transaction request
 	createArgs := &models.SafeCreateTransactionArgs{
-		SignerAddress: c.signer.AddressHex(),
+		SignerAddress: signerAddress,
 		SafeAddress:   safeAddress,
 		Nonce:         "0",
 		Metadata:      "",
 	}
 
+	c.logger.Println("Building SAFE-CREATE transaction request...")
+	c.logger.Printf("Factory address: %s", c.contractConfig.SafeFactory)
+	c.logger.Printf("Singleton address: %s", c.contractConfig.SafeSingleton)
+
 	request, err := builder.BuildSafeCreateTransactionRequest(createArgs, c.signer, c.chainID)
 	if err != nil {
+		c.logger.Printf("Error building transaction request: %v", err)
 		return nil, err
 	}
 
+	c.logger.Printf("Transaction type: %s", request.Type)
+	c.logger.Printf("Transaction from: %s", request.From)
+	c.logger.Printf("Transaction proxyWallet: %s", request.ProxyWallet)
+	c.logger.Println("Submitting transaction to relayer...")
+
 	// Submit the transaction
-	return c.submitTransaction(request)
+	response, err := c.submitTransaction(request)
+	if err != nil {
+		c.logger.Printf("Error submitting transaction: %v", err)
+		return nil, err
+	}
+
+	c.logger.Printf("✓ Transaction submitted successfully!")
+	c.logger.Printf("Transaction ID: %s", response.TransactionID)
+	c.logger.Printf("Safe address: %s", safeAddress)
+	c.logger.Printf("Signer address: %s", signerAddress)
+
+	return response, nil
 }
 
 // Execute submits one or more transactions to be executed through the Safe
