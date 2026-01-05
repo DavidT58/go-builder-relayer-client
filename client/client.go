@@ -71,7 +71,7 @@ func NewRelayClient(relayerURL string, chainID int64, privateKey string, builder
 // GetNonce retrieves the nonce for the signer
 func (c *RelayClient) GetNonce(signerAddress, signerType string) (*models.NonceResponse, error) {
 	// Build query parameters
-	path := fmt.Sprintf("%s?signerAddress=%s&signerType=%s", GET_NONCE, signerAddress, signerType)
+	path := fmt.Sprintf("%s?address=%s&type=%s", GET_NONCE, signerAddress, signerType)
 
 	// Make GET request
 	var response models.NonceResponse
@@ -121,7 +121,7 @@ func (c *RelayClient) GetTransactions() (*models.GetTransactionsResponse, error)
 // GetDeployed checks if a Safe wallet is deployed
 func (c *RelayClient) GetDeployed(safeAddress string) (bool, error) {
 	// Build query parameters
-	path := fmt.Sprintf("%s?safeAddress=%s", GET_DEPLOYED, safeAddress)
+	path := fmt.Sprintf("%s?address=%s", GET_DEPLOYED, safeAddress)
 
 	// Make GET request
 	var response models.DeployedResponse

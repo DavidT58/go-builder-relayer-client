@@ -160,62 +160,6 @@ func TestEncodeSafeSetupParams(t *testing.T) {
 	}
 }
 
-func TestCalculateCreate2Address(t *testing.T) {
-	factory := common.HexToAddress("0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2")
-	singleton := common.HexToAddress("0x3E5c63644E683549055b9Be8653de26E0B4CD36E")
-	initializer := []byte("test initializer data")
-
-	addr := calculateCreate2Address(factory, singleton, initializer)
-
-	if addr == (common.Address{}) {
-		t.Error("CREATE2 address should not be zero")
-	}
-
-	// Verify it's deterministic
-	addr2 := calculateCreate2Address(factory, singleton, initializer)
-	if addr != addr2 {
-		t.Error("CREATE2 address should be deterministic")
-	}
-
-	// Verify different initializers produce different addresses
-	addr3 := calculateCreate2Address(factory, singleton, []byte("different data"))
-	if addr == addr3 {
-		t.Error("Different initializers should produce different addresses")
-	}
-}
-
-func TestBuildProxyInitCode(t *testing.T) {
-	singleton := common.HexToAddress("0x3E5c63644E683549055b9Be8653de26E0B4CD36E")
-	initializer := []byte("test")
-
-	initCode := buildProxyInitCode(singleton, initializer)
-
-	if len(initCode) == 0 {
-		t.Error("Init code should not be empty")
-	}
-
-	// Verify it contains the singleton address
-	singletonBytes := singleton.Bytes()
-	found := false
-	for i := 0; i <= len(initCode)-len(singletonBytes); i++ {
-		match := true
-		for j := 0; j < len(singletonBytes); j++ {
-			if initCode[i+j] != singletonBytes[j] {
-				match = false
-				break
-			}
-		}
-		if match {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		t.Error("Init code should contain singleton address")
-	}
-}
-
 func TestVerifySafeAddress(t *testing.T) {
 	signerAddr := common.HexToAddress(testSignerAddress)
 
@@ -303,6 +247,31 @@ func TestDeriveSafeAddressWithNonce(t *testing.T) {
 	if safeAddr != regularAddr {
 		t.Errorf("Address with nonce 0 should match regular derivation: %s != %s", safeAddr.Hex(), regularAddr.Hex())
 	}
+}
+
+// TestDeriveSafeAddress_KnownAddress tests that our implementation produces the expected address
+// This validates against the Python implementation for testChainID (80002 - Polygon Amoy)
+func TestDeriveSafeAddress_KnownAddress(t *testing.T) {
+	// Test with a known signer address
+	signerAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+	
+	// Expected Safe address calculated using the Python implementation's logic
+	// Parameters:
+	// - Factory: 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2
+	// - Salt: keccak256(abi.encode(signerAddress))
+	// - SAFE_INIT_CODE_HASH: 0x2bce2127ff07fb632d16c8347c4ebf501f4841168bed00d9e6ef715ddb6fcecf
+	expectedAddr := common.HexToAddress("0x76Bef2e2Aa6f92a8DC734e506C38Abe2e5523c11")
+	
+	safeAddr, err := DeriveSafeAddress(signerAddr, testChainID)
+	if err != nil {
+		t.Fatalf("DeriveSafeAddress failed: %v", err)
+	}
+	
+	if safeAddr != expectedAddr {
+		t.Errorf("Safe address mismatch:\n  got: %s\n  want: %s", safeAddr.Hex(), expectedAddr.Hex())
+	}
+	
+	t.Logf("Successfully derived Safe address: %s", safeAddr.Hex())
 }
 
 // Helper function to get test contract config
