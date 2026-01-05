@@ -254,23 +254,23 @@ func TestDeriveSafeAddressWithNonce(t *testing.T) {
 func TestDeriveSafeAddress_KnownAddress(t *testing.T) {
 	// Test with a known signer address
 	signerAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-	
+
 	// Expected Safe address calculated using the Python implementation's logic
 	// Parameters:
-	// - Factory: 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2
+	// - Factory: 0xaacFeEa03eb1561C4e67d661e40682Bd20E3541b
 	// - Salt: keccak256(abi.encode(signerAddress))
 	// - SAFE_INIT_CODE_HASH: 0x2bce2127ff07fb632d16c8347c4ebf501f4841168bed00d9e6ef715ddb6fcecf
-	expectedAddr := common.HexToAddress("0x76Bef2e2Aa6f92a8DC734e506C38Abe2e5523c11")
-	
+	expectedAddr := common.HexToAddress("0xd93B25cb943D14d0d34FBaF01Fc93a0f8b5F6E47")
+
 	safeAddr, err := DeriveSafeAddress(signerAddr, testChainID)
 	if err != nil {
 		t.Fatalf("DeriveSafeAddress failed: %v", err)
 	}
-	
+
 	if safeAddr != expectedAddr {
 		t.Errorf("Safe address mismatch:\n  got: %s\n  want: %s", safeAddr.Hex(), expectedAddr.Hex())
 	}
-	
+
 	t.Logf("Successfully derived Safe address: %s", safeAddr.Hex())
 }
 
