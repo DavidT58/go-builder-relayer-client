@@ -84,16 +84,21 @@ func (c *RelayClient) GetNonce(signerAddress, signerType string) (*models.NonceR
 
 // GetTransaction retrieves a transaction by ID
 func (c *RelayClient) GetTransaction(transactionID string) (*models.RelayerTransaction, error) {
-	// Build path
-	path := fmt.Sprintf("%s/%s", GET_TRANSACTION, transactionID)
+	// Build query parameters
+	path := fmt.Sprintf("%s?id=%s", GET_TRANSACTION, transactionID)
 
-	// Make GET request
-	var response models.RelayerTransaction
+	// Make GET request - API returns an array
+	var response []models.RelayerTransaction
 	if err := c.httpClient.GetJSON(path, nil, &response); err != nil {
 		return nil, err
 	}
 
-	return &response, nil
+	// Return first transaction from array
+	if len(response) == 0 {
+		return nil, errors.NewRelayerClientError(fmt.Sprintf("transaction not found: %s", transactionID), nil)
+	}
+
+	return &response[0], nil
 }
 
 // GetTransactions retrieves all transactions for the builder
@@ -156,17 +161,13 @@ func (c *RelayClient) Deploy() (*models.ClientRelayerTransactionResponse, error)
 		return nil, errors.NewRelayerClientError(fmt.Sprintf("Safe already deployed at %s", safeAddress), nil)
 	}
 
-	// Get nonce
-	nonceResp, err := c.GetNonce(c.signer.AddressHex(), string(models.EOA))
-	if err != nil {
-		return nil, err
-	}
-
+	// For SAFE-CREATE transactions, nonce is always "0" for the EOA signature
+	// The relayer will handle the actual nonce internally
 	// Build Safe creation transaction request
 	createArgs := &models.SafeCreateTransactionArgs{
 		SignerAddress: c.signer.AddressHex(),
 		SafeAddress:   safeAddress,
-		Nonce:         nonceResp.Nonce,
+		Nonce:         "0",
 		Metadata:      "",
 	}
 

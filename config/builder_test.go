@@ -65,8 +65,8 @@ func TestBuilderConfig_Validate(t *testing.T) {
 }
 
 func TestBuilderConfig_GenerateBuilderHeaders(t *testing.T) {
-	// Use a valid base64 encoded secret
-	secret := base64.StdEncoding.EncodeToString([]byte("test-secret-key"))
+	// Use a valid URL-safe base64 encoded secret (matching Python implementation)
+	secret := base64.URLEncoding.EncodeToString([]byte("test-secret-key"))
 	config := NewBuilderConfig("test-key", secret, "test-pass")
 
 	headers, err := config.GenerateBuilderHeaders("POST", "/api/v1/test", map[string]string{"test": "data"})
@@ -74,8 +74,8 @@ func TestBuilderConfig_GenerateBuilderHeaders(t *testing.T) {
 		t.Fatalf("GenerateBuilderHeaders failed: %v", err)
 	}
 
-	// Check required headers are present
-	requiredHeaders := []string{"POLY-API-KEY", "POLY-SIGNATURE", "POLY-TIMESTAMP", "POLY-PASSPHRASE", "Content-Type"}
+	// Check required headers are present (note: underscores, not hyphens)
+	requiredHeaders := []string{"POLY_BUILDER_API_KEY", "POLY_BUILDER_SIGNATURE", "POLY_BUILDER_TIMESTAMP", "POLY_BUILDER_PASSPHRASE", "Content-Type"}
 	for _, header := range requiredHeaders {
 		if _, exists := headers[header]; !exists {
 			t.Errorf("Missing required header: %s", header)
@@ -83,11 +83,11 @@ func TestBuilderConfig_GenerateBuilderHeaders(t *testing.T) {
 	}
 
 	// Verify header values
-	if headers["POLY-API-KEY"] != "test-key" {
-		t.Errorf("POLY-API-KEY = %s, want test-key", headers["POLY-API-KEY"])
+	if headers["POLY_BUILDER_API_KEY"] != "test-key" {
+		t.Errorf("POLY_BUILDER_API_KEY = %s, want test-key", headers["POLY_BUILDER_API_KEY"])
 	}
-	if headers["POLY-PASSPHRASE"] != "test-pass" {
-		t.Errorf("POLY-PASSPHRASE = %s, want test-pass", headers["POLY-PASSPHRASE"])
+	if headers["POLY_BUILDER_PASSPHRASE"] != "test-pass" {
+		t.Errorf("POLY_BUILDER_PASSPHRASE = %s, want test-pass", headers["POLY_BUILDER_PASSPHRASE"])
 	}
 	if headers["Content-Type"] != "application/json" {
 		t.Errorf("Content-Type = %s, want application/json", headers["Content-Type"])

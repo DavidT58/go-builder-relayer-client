@@ -6,39 +6,18 @@ import (
 
 // SignatureParams contains the parameters for signing a Safe transaction
 type SignatureParams struct {
-	// PaymentReceiver is the address that receives the payment (optional)
-	PaymentReceiver *string `json:"paymentReceiver,omitempty"`
-	// Payment is the amount to be paid (optional)
-	Payment *string `json:"payment,omitempty"`
-	// PaymentToken is the token address for payment (optional)
-	PaymentToken *string `json:"paymentToken,omitempty"`
-	// GasPrice is the gas price for the transaction
-	GasPrice string `json:"gasPrice"`
-	// Operation is the operation type
-	Operation OperationType `json:"operation"`
-	// SafeTxGas is the gas for the Safe transaction
-	SafeTxGas string `json:"safeTxGas"`
-	// BaseGas is the base gas for the transaction
-	BaseGas string `json:"baseGas"`
-	// GasToken is the token address for gas payment
-	GasToken string `json:"gasToken"`
-	// RefundReceiver is the address that receives gas refunds
-	RefundReceiver string `json:"refundReceiver"`
-	// Nonce is the Safe transaction nonce
-	Nonce string `json:"nonce"`
-}
+	// SAFE transaction params
+	GasPrice       *string `json:"gasPrice,omitempty"`
+	Operation      *string `json:"operation,omitempty"`
+	SafeTxGas      *string `json:"safeTxGas,omitempty"`
+	BaseGas        *string `json:"baseGas,omitempty"`
+	GasToken       *string `json:"gasToken,omitempty"`
+	RefundReceiver *string `json:"refundReceiver,omitempty"`
 
-// NewSignatureParams creates a new SignatureParams with default values
-func NewSignatureParams(nonce string) *SignatureParams {
-	return &SignatureParams{
-		GasPrice:       "0",
-		Operation:      Call,
-		SafeTxGas:      "0",
-		BaseGas:        "0",
-		GasToken:       "0x0000000000000000000000000000000000000000",
-		RefundReceiver: "0x0000000000000000000000000000000000000000",
-		Nonce:          nonce,
-	}
+	// SAFE-CREATE transaction params
+	PaymentToken    *string `json:"paymentToken,omitempty"`
+	Payment         *string `json:"payment,omitempty"`
+	PaymentReceiver *string `json:"paymentReceiver,omitempty"`
 }
 
 // SplitSig represents a split ECDSA signature (r, s, v components)
@@ -82,34 +61,26 @@ func NewSignature(signer, data string) *Signature {
 type TransactionRequest struct {
 	// Type is the transaction type (SAFE or SAFE-CREATE)
 	Type string `json:"type"`
-	// Metadata is optional metadata for the transaction
-	Metadata *string `json:"metadata,omitempty"`
-	// SafeAddress is the address of the Safe wallet
-	SafeAddress string `json:"safeAddress"`
+	// From is the signer address (EOA for SAFE-CREATE, Safe address for SAFE)
+	From string `json:"from"`
 	// To is the destination address(es) - can be string or array
 	To json.RawMessage `json:"to"`
-	// Value is the value(s) to send - can be string or array
-	Value json.RawMessage `json:"value"`
+	// ProxyWallet is the Safe wallet address
+	ProxyWallet string `json:"proxyWallet"`
 	// Data is the transaction data - can be string or array
 	Data json.RawMessage `json:"data"`
-	// Operation is the operation type(s) - can be int or array
+	// Signature is the transaction signature
+	Signature string `json:"signature"`
+	// SignatureParams contains additional signature parameters
+	SignatureParams *SignatureParams `json:"signatureParams,omitempty"`
+	// Value is the value(s) to send - can be string or array (optional)
+	Value json.RawMessage `json:"value,omitempty"`
+	// Operation is the operation type(s) - can be int or array (optional)
 	Operation json.RawMessage `json:"operation,omitempty"`
-	// Signatures is the array of signatures
-	Signatures []Signature `json:"signatures"`
-	// GasPrice is the gas price
-	GasPrice string `json:"gasPrice,omitempty"`
-	// SafeTxGas is the Safe transaction gas
-	SafeTxGas string `json:"safeTxGas,omitempty"`
-	// BaseGas is the base gas
-	BaseGas string `json:"baseGas,omitempty"`
-	// GasToken is the gas token address
-	GasToken string `json:"gasToken,omitempty"`
-	// RefundReceiver is the refund receiver address
-	RefundReceiver string `json:"refundReceiver,omitempty"`
-	// Nonce is the transaction nonce
-	Nonce string `json:"nonce"`
-	// ChainID is the blockchain chain ID
-	ChainID int64 `json:"chainId,omitempty"`
+	// Nonce is the transaction nonce (optional)
+	Nonce *string `json:"nonce,omitempty"`
+	// Metadata is optional metadata for the transaction
+	Metadata *string `json:"metadata,omitempty"`
 }
 
 // SafeTransactionData represents the structured data for a Safe transaction

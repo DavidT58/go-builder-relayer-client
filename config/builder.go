@@ -71,8 +71,8 @@ func (b *BuilderConfig) GenerateBuilderHeaders(method, requestPath string, body 
 	// Create signature message: timestamp + method + requestPath + body
 	message := fmt.Sprintf("%s%s%s%s", timestampStr, method, requestPath, bodyStr)
 
-	// Decode the secret from base64
-	secretBytes, err := base64.StdEncoding.DecodeString(b.Secret)
+	// Decode the secret from URL-safe base64 (matching Python implementation)
+	secretBytes, err := base64.URLEncoding.DecodeString(b.Secret)
 	if err != nil {
 		return nil, errors.NewRelayerClientError("failed to decode secret", err)
 	}
@@ -80,15 +80,16 @@ func (b *BuilderConfig) GenerateBuilderHeaders(method, requestPath string, body 
 	// Generate HMAC-SHA256 signature
 	h := hmac.New(sha256.New, secretBytes)
 	h.Write([]byte(message))
-	signature := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	// Encode signature using URL-safe base64 (matching Python implementation)
+	signature := base64.URLEncoding.EncodeToString(h.Sum(nil))
 
-	// Return headers
+	// Return headers (note: underscores, not hyphens, and BUILDER not just API)
 	headers := map[string]string{
-		"POLY-API-KEY":    b.APIKey,
-		"POLY-SIGNATURE":  signature,
-		"POLY-TIMESTAMP":  timestampStr,
-		"POLY-PASSPHRASE": b.Passphrase,
-		"Content-Type":    "application/json",
+		"POLY_BUILDER_API_KEY":    b.APIKey,
+		"POLY_BUILDER_SIGNATURE":  signature,
+		"POLY_BUILDER_TIMESTAMP":  timestampStr,
+		"POLY_BUILDER_PASSPHRASE": b.Passphrase,
+		"Content-Type":             "application/json",
 	}
 
 	return headers, nil

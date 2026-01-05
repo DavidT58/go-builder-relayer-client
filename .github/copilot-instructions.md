@@ -19,9 +19,10 @@ client.RelayClient → config.BuilderConfig (HMAC auth) → http.Client → Rela
 
 ### Critical Dependencies
 - **Safe Contracts**: Chain-specific addresses in `config/config.go` (Polygon Amoy testnet: 80002, mainnet: 137)
-- **Builder API Auth**: HMAC-SHA256 with base64-encoded secret (`config/builder.go:GenerateBuilderHeaders`)
+- **Builder API Auth**: HMAC-SHA256 with URL-safe base64 encoding (`config/builder.go:GenerateBuilderHeaders`)
 - **EIP-712 Signing**: Domain separator + struct hash for Safe transactions (`signer/eip712.go`)
-- **CREATE2 Derivation**: Deterministic Safe address from signer+factory+initializer (`builder/derive.go`)
+- **CREATE2 Derivation**: Deterministic Safe address from signer+factory (`builder/derive.go`)
+- **TransactionRequest Structure**: Matches Python with `from`, `proxyWallet`, `signature`, `signatureParams` fields
 
 ## Development Patterns
 
@@ -113,9 +114,14 @@ config.AddChainConfig(&config.ContractConfig{
 })
 ```
 
-### Builder API Headers
-HMAC signature format: `base64(HMAC-SHA256(secret, timestamp + method + path + body))`
-Required headers: `POLY-API-KEY`, `POLY-SIGNATURE`, `POLY-TIMESTAMP`, `POLY-PASSPHRASE`
+### Builder API Authentication
+**CRITICAL**: Must match Python implementation exactly:
+- **Base64 Encoding**: Use URL-safe base64 (`base64.URLEncoding`) for both secret decoding AND signature encoding
+- **Header Names**: Use underscores, not hyphens: `POLY_BUILDER_API_KEY`, `POLY_BUILDER_SIGNATURE`, `POLY_BUILDER_TIMESTAMP`, `POLY_BUILDER_PASSPHRASE`
+- **HMAC Format**: `urlsafe_base64(HMAC-SHA256(urlsafe_base64_decode(secret), timestamp + method + path + body))`
+- **Secret Format**: The `BUILDER_SECRET` from Polymarket is already URL-safe base64-encoded - decode it before HMAC, don't re-encode it
+
+See `config/builder.go:GenerateBuilderHeaders()` for reference implementation.
 
 ## File Organization
 - `client/`: Main entry point (`RelayClient` struct with public API)
@@ -128,8 +134,10 @@ Required headers: `POLY-API-KEY`, `POLY-SIGNATURE`, `POLY-TIMESTAMP`, `POLY-PASS
 - `examples/`: Runnable usage examples (deploy, execute, get_nonce, get_transaction)
 
 ## Important Gotchas
-1. **Hex Prefix Handling**: Use `utils.PrependZx()` / `RemoveZx()` - some fields need "0x", others don't
-2. **Private Key Format**: `NewSigner()` accepts keys with or without "0x" prefix
-3. **Transaction States**: Only `STATE_CONFIRMED`, `STATE_FAILED`, `STATE_INVALID` are terminal (see `IsTerminal()`)
-4. **Signature V Value**: Must add 27 to recovery ID for Ethereum compatibility (handled in `signer.Sign()`)
-5. **ABI Encoding**: Manual encoding in `builder/derive.go` for Safe setup parameters - matches Solidity ABI layout
+1. **URL-Safe Base64**: MUST use `base64.URLEncoding`, not `base64.StdEncoding` for Builder API (Python uses `urlsafe_b64decode/encode`)
+2. **Header Naming**: Builder headers use underscores (`POLY_BUILDER_*`), not hyphens (`POLY-*`)
+3. **CreateProxy EIP-712**: For SAFE-CREATE, use payment fields (`paymentToken`, `payment`, `paymentReceiver`), NOT singleton/initializer/saltNonce
+4. **SAFE-CREATE Nonce**: Always use "0" - the relayer handles nonces internally for Safe deployments
+5. **Transaction States**: Only `STATE_CONFIRMED`, `STATE_FAILED`, `STATE_INVALID` are terminal (see `IsTerminal()`)
+6. **Signature V Value**: Must add 27 to recovery ID for Ethereum compatibility (handled in `signer.Sign()`)
+7. **TransactionRequest**: Must include `from` (signer address) and `proxyWallet` (Safe address) fields to match Python API

@@ -26,10 +26,11 @@ type SafeTx struct {
 
 // CreateProxy represents the EIP-712 CreateProxy typed data structure
 // This is used for Safe wallet creation via the proxy factory
+// Matches the Python implementation with payment fields
 type CreateProxy struct {
-	Singleton      common.Address
-	Initializer    []byte
-	SaltNonce      *big.Int
+	PaymentToken    common.Address
+	Payment         *big.Int
+	PaymentReceiver common.Address
 }
 
 // BuildSafeTxHash builds the EIP-712 hash for a Safe transaction
@@ -77,7 +78,7 @@ func BuildSafeTxHash(safeTx *SafeTx, verifyingContract common.Address, chainID i
 }
 
 // BuildCreateProxyHash builds the EIP-712 hash for Safe proxy creation
-// This is used when deploying a new Safe wallet
+// This is used when deploying a new Safe wallet (matching Python implementation)
 func BuildCreateProxyHash(createProxy *CreateProxy, verifyingContract common.Address, chainID int64) (common.Hash, error) {
 	// Build the EIP-712 typed data
 	typedData := &signer.TypedData{
@@ -88,9 +89,9 @@ func BuildCreateProxyHash(createProxy *CreateProxy, verifyingContract common.Add
 				{Name: "verifyingContract", Type: "address"},
 			},
 			"CreateProxy": {
-				{Name: "singleton", Type: "address"},
-				{Name: "initializer", Type: "bytes"},
-				{Name: "saltNonce", Type: "uint256"},
+				{Name: "paymentToken", Type: "address"},
+				{Name: "payment", Type: "uint256"},
+				{Name: "paymentReceiver", Type: "address"},
 			},
 		},
 		PrimaryType: "CreateProxy",
@@ -100,9 +101,9 @@ func BuildCreateProxyHash(createProxy *CreateProxy, verifyingContract common.Add
 			VerifyingContract: verifyingContract,
 		},
 		Message: map[string]interface{}{
-			"singleton":   createProxy.Singleton.Hex(),
-			"initializer": common.Bytes2Hex(createProxy.Initializer),
-			"saltNonce":   createProxy.SaltNonce.String(),
+			"paymentToken":    createProxy.PaymentToken.Hex(),
+			"payment":         createProxy.Payment.String(),
+			"paymentReceiver": createProxy.PaymentReceiver.Hex(),
 		},
 	}
 
@@ -143,16 +144,16 @@ func ComputeSafeTxHash(
 
 // ComputeCreateProxyHash is a helper function that creates a CreateProxy struct and computes its hash
 func ComputeCreateProxyHash(
-	singleton common.Address,
-	initializer []byte,
-	saltNonce *big.Int,
+	paymentToken common.Address,
+	payment *big.Int,
+	paymentReceiver common.Address,
 	verifyingContract common.Address,
 	chainID int64,
 ) (common.Hash, error) {
 	createProxy := &CreateProxy{
-		Singleton:   singleton,
-		Initializer: initializer,
-		SaltNonce:   saltNonce,
+		PaymentToken:    paymentToken,
+		Payment:         payment,
+		PaymentReceiver: paymentReceiver,
 	}
 
 	return BuildCreateProxyHash(createProxy, verifyingContract, chainID)
@@ -166,9 +167,9 @@ func GetSafeTxTypeHash() common.Hash {
 }
 
 // GetCreateProxyTypeHash returns the type hash for CreateProxy
-// This is keccak256("CreateProxy(address singleton,bytes initializer,uint256 saltNonce)")
+// This is keccak256("CreateProxy(address paymentToken,uint256 payment,address paymentReceiver)")
 func GetCreateProxyTypeHash() common.Hash {
-	typeString := "CreateProxy(address singleton,bytes initializer,uint256 saltNonce)"
+	typeString := "CreateProxy(address paymentToken,uint256 payment,address paymentReceiver)"
 	return crypto.Keccak256Hash([]byte(typeString))
 }
 

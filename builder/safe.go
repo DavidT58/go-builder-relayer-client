@@ -187,7 +187,7 @@ func BuildSafeTransactionRequest(args *models.SafeTransactionArgs, sig *signer.S
 	}
 
 	// Build the transaction request
-	var to, value, data, operation interface{}
+	var to, value, data interface{}
 
 	if len(args.Transactions) == 1 {
 		// Single transaction
@@ -195,28 +195,24 @@ func BuildSafeTransactionRequest(args *models.SafeTransactionArgs, sig *signer.S
 		to = txn.To
 		value = txn.Value
 		data = txn.Data
-		operation = int(txn.Operation)
 	} else {
 		// Multiple transactions - need arrays
 		tos := make([]string, len(args.Transactions))
 		values := make([]string, len(args.Transactions))
 		datas := make([]string, len(args.Transactions))
-		operations := make([]int, len(args.Transactions))
 
 		for i, txn := range args.Transactions {
 			tos[i] = txn.To
 			values[i] = txn.Value
 			datas[i] = txn.Data
-			operations[i] = int(txn.Operation)
 		}
 
 		to = tos
 		value = values
 		data = datas
-		operation = operations
 	}
 
-	// Marshal the to, value, data, operation fields
+	// Marshal the to, value, data fields
 	toJSON, err := json.Marshal(to)
 	if err != nil {
 		return nil, errors.ErrJSONMarshalFailed(err)
@@ -229,33 +225,40 @@ func BuildSafeTransactionRequest(args *models.SafeTransactionArgs, sig *signer.S
 	if err != nil {
 		return nil, errors.ErrJSONMarshalFailed(err)
 	}
-	operationJSON, err := json.Marshal(operation)
-	if err != nil {
-		return nil, errors.ErrJSONMarshalFailed(err)
+
+	// Create signature params for SAFE transactions
+	gasPrice := "0"
+	safeTxGas := "0"
+	baseGas := "0"
+	gasToken := constants.ZERO_ADDRESS
+	refundReceiver := constants.ZERO_ADDRESS
+	var operationStr string
+	if len(args.Transactions) == 1 {
+		operationStr = string(rune('0' + int(args.Transactions[0].Operation)))
+	} else {
+		operationStr = "1" // DelegateCall for multisend
 	}
 
-	// Create signature object
-	sigObj := models.Signature{
-		Signer: sig.AddressHex(),
-		Data:   packedSig,
+	signatureParams := &models.SignatureParams{
+		GasPrice:       &gasPrice,
+		Operation:      &operationStr,
+		SafeTxGas:      &safeTxGas,
+		BaseGas:        &baseGas,
+		GasToken:       &gasToken,
+		RefundReceiver: &refundReceiver,
 	}
 
-	// Create the request
+	// Create the request (matching Python structure)
 	request := &models.TransactionRequest{
-		Type:           string(models.SAFE),
-		SafeAddress:    args.SafeAddress,
-		To:             toJSON,
-		Value:          valueJSON,
-		Data:           dataJSON,
-		Operation:      operationJSON,
-		Signatures:     []models.Signature{sigObj},
-		GasPrice:       "0",
-		SafeTxGas:      "0",
-		BaseGas:        "0",
-		GasToken:       constants.ZERO_ADDRESS,
-		RefundReceiver: constants.ZERO_ADDRESS,
-		Nonce:          args.Nonce,
-		ChainID:        chainID,
+		Type:            string(models.SAFE),
+		From:            sig.AddressHex(), // The signer address (EOA)
+		To:              toJSON,
+		ProxyWallet:     args.SafeAddress, // The Safe address
+		Value:           valueJSON,
+		Data:            dataJSON,
+		Nonce:           &args.Nonce,
+		Signature:       packedSig,
+		SignatureParams: signatureParams,
 	}
 
 	// Add metadata if provided

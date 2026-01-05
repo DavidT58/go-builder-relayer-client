@@ -14,6 +14,7 @@ import (
 )
 
 // CreateSafeCreateStructHash builds the EIP-712 struct hash for Safe proxy creation
+// Matches the Python implementation using payment fields
 func CreateSafeCreateStructHash(args *models.SafeCreateTransactionArgs, sig *signer.Signer, chainID int64) (common.Hash, error) {
 	// Get contract configuration
 	contractConfig, err := config.GetContractConfig(chainID)
@@ -21,24 +22,17 @@ func CreateSafeCreateStructHash(args *models.SafeCreateTransactionArgs, sig *sig
 		return common.Hash{}, err
 	}
 
-	// Build the initializer data
-	signerAddress := common.HexToAddress(args.SignerAddress)
-	initializer, err := buildSafeInitializer(signerAddress, contractConfig)
-	if err != nil {
-		return common.Hash{}, err
-	}
+	// For SAFE-CREATE, we use payment fields (all zeros/constants)
+	// This matches the Python implementation
+	paymentToken := common.HexToAddress(constants.ZERO_ADDRESS)
+	payment := big.NewInt(0)
+	paymentReceiver := common.HexToAddress(constants.ZERO_ADDRESS)
 
-	// Parse nonce (saltNonce)
-	saltNonce := new(big.Int)
-	if args.Nonce != "" {
-		saltNonce.SetString(args.Nonce, 0)
-	}
-
-	// Build CreateProxy struct
+	// Build CreateProxy struct with payment fields
 	createProxy := &CreateProxy{
-		Singleton:   common.HexToAddress(contractConfig.SafeSingleton),
-		Initializer: initializer,
-		SaltNonce:   saltNonce,
+		PaymentToken:    paymentToken,
+		Payment:         payment,
+		PaymentReceiver: paymentReceiver,
 	}
 
 	// Get verifying contract (the Safe Factory)
@@ -88,37 +82,14 @@ func BuildSafeCreateTransactionRequest(args *models.SafeCreateTransactionArgs, s
 		return nil, err
 	}
 
-	// Split and pack the signature
-	packedSig, err := SplitAndPackSig(signature)
-	if err != nil {
-		return nil, err
-	}
-
-	// Build the initializer data
-	signerAddress := common.HexToAddress(args.SignerAddress)
-	initializer, err := buildSafeInitializer(signerAddress, contractConfig)
-	if err != nil {
-		return nil, err
-	}
-
 	// The "to" for Safe creation is the factory address
 	to := contractConfig.SafeFactory
 
-	// The "value" is always 0 for Safe creation
-	value := "0"
+	// The "data" is always "0x" for SAFE-CREATE (matching Python implementation)
+	data := "0x"
 
-	// The "data" is the encoded initializer
-	data := hexutil.Encode(initializer)
-
-	// Operation is always Call (0) for Safe creation
-	operation := int(models.Call)
-
-	// Marshal the to, value, data, operation fields
+	// Marshal to and data as JSON strings
 	toJSON, err := json.Marshal(to)
-	if err != nil {
-		return nil, errors.ErrJSONMarshalFailed(err)
-	}
-	valueJSON, err := json.Marshal(value)
 	if err != nil {
 		return nil, errors.ErrJSONMarshalFailed(err)
 	}
@@ -126,33 +97,27 @@ func BuildSafeCreateTransactionRequest(args *models.SafeCreateTransactionArgs, s
 	if err != nil {
 		return nil, errors.ErrJSONMarshalFailed(err)
 	}
-	operationJSON, err := json.Marshal(operation)
-	if err != nil {
-		return nil, errors.ErrJSONMarshalFailed(err)
+
+	// For SAFE-CREATE, signature params contain payment info (all zeros/constants)
+	paymentToken := constants.ZERO_ADDRESS
+	payment := "0"
+	paymentReceiver := constants.ZERO_ADDRESS
+
+	signatureParams := &models.SignatureParams{
+		PaymentToken:    &paymentToken,
+		Payment:         &payment,
+		PaymentReceiver: &paymentReceiver,
 	}
 
-	// Create signature object
-	sigObj := models.Signature{
-		Signer: sig.AddressHex(),
-		Data:   packedSig,
-	}
-
-	// Create the request
+	// Create the request (matching Python structure)
 	request := &models.TransactionRequest{
-		Type:           string(models.SAFE_CREATE),
-		SafeAddress:    args.SafeAddress,
-		To:             toJSON,
-		Value:          valueJSON,
-		Data:           dataJSON,
-		Operation:      operationJSON,
-		Signatures:     []models.Signature{sigObj},
-		GasPrice:       "0",
-		SafeTxGas:      "0",
-		BaseGas:        "0",
-		GasToken:       constants.ZERO_ADDRESS,
-		RefundReceiver: constants.ZERO_ADDRESS,
-		Nonce:          args.Nonce,
-		ChainID:        chainID,
+		Type:            string(models.SAFE_CREATE),
+		From:            args.SignerAddress,
+		To:              toJSON,
+		ProxyWallet:     args.SafeAddress,
+		Data:            dataJSON,
+		Signature:       signature,
+		SignatureParams: signatureParams,
 	}
 
 	// Add metadata if provided
