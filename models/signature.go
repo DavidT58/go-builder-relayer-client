@@ -9,7 +9,7 @@ type SignatureParams struct {
 	// SAFE transaction params
 	GasPrice       *string `json:"gasPrice,omitempty"`
 	Operation      *string `json:"operation,omitempty"`
-	SafeTxGas      *string `json:"safeTxGas,omitempty"`
+	SafeTxGas      *string `json:"safeTxnGas,omitempty"`
 	BaseGas        *string `json:"baseGas,omitempty"`
 	GasToken       *string `json:"gasToken,omitempty"`
 	RefundReceiver *string `json:"refundReceiver,omitempty"`
