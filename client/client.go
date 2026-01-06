@@ -235,8 +235,12 @@ func (c *RelayClient) Execute(transactions []models.SafeTransaction, metadata st
 		return nil, err
 	}
 
-	// Get nonce
-	nonceResp, err := c.GetNonce(safeAddress, string(models.SAFE_SIGNER))
+	// Get signer (EOA) address - this is the "from" address
+	fromAddress := c.signer.AddressHex()
+
+	// Get nonce for the signer address (EOA), not the Safe address
+	// This matches Python: get_nonce(from_address, TransactionType.SAFE.value)
+	nonceResp, err := c.GetNonce(fromAddress, string(models.SAFE))
 	if err != nil {
 		return nil, err
 	}
