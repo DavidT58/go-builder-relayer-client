@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -331,6 +332,10 @@ func (c *RelayClient) GetExpectedSafe() (string, error) {
 
 // submitTransaction submits a transaction request to the relayer
 func (c *RelayClient) submitTransaction(request *models.TransactionRequest) (*models.ClientRelayerTransactionResponse, error) {
+	// Debug: Print the request being sent
+	requestJSON, _ := json.MarshalIndent(request, "", "  ")
+	log.Printf("DEBUG: Submitting transaction request:\n%s", string(requestJSON))
+
 	// Generate authentication headers
 	headers, err := c.generateBuilderHeaders("POST", SUBMIT_TRANSACTION, request)
 	if err != nil {
