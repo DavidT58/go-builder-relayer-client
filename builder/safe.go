@@ -161,8 +161,8 @@ func CreateSafeSignature(args *models.SafeTransactionArgs, sig *signer.Signer) (
 	log.Printf("DEBUG: Safe address: %s", args.SafeAddress)
 	log.Printf("DEBUG: Nonce: %s", args.Nonce)
 
-	// Sign the struct hash using EIP-712 signing
-	signature, err := sig.SignEIP712StructHash(structHash.Bytes())
+	// Sign the struct hash using regular Sign method (same as SAFE-CREATE)
+	signature, err := sig.Sign(structHash.Bytes())
 	if err != nil {
 		return "", err
 	}
