@@ -6,6 +6,7 @@ import (
 	"github.com/davidt58/go-builder-relayer-client/constants"
 	"github.com/davidt58/go-builder-relayer-client/signer"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -64,7 +65,7 @@ func BuildSafeTxHash(safeTx *SafeTx, verifyingContract common.Address, chainID i
 		Message: map[string]interface{}{
 			"to":             safeTx.To.Hex(),
 			"value":          safeTx.Value.String(),
-			"data":           common.Bytes2Hex(safeTx.Data),
+			"data":           hexutil.Encode(safeTx.Data), // Use hexutil.Encode to include 0x prefix
 			"operation":      int(safeTx.Operation),
 			"safeTxGas":      safeTx.SafeTxGas.String(),
 			"baseGas":        safeTx.BaseGas.String(),
