@@ -40,6 +40,7 @@ func BuildSafeTxHash(safeTx *SafeTx, verifyingContract common.Address, chainID i
 	typedData := &signer.TypedData{
 		Types: map[string][]signer.EIP712Type{
 			"EIP712Domain": {
+				{Name: "chainId", Type: "uint256"},
 				{Name: "verifyingContract", Type: "address"},
 			},
 			"SafeTx": {
@@ -57,6 +58,7 @@ func BuildSafeTxHash(safeTx *SafeTx, verifyingContract common.Address, chainID i
 		},
 		PrimaryType: "SafeTx",
 		Domain: signer.EIP712Domain{
+			ChainId:           big.NewInt(chainID),
 			VerifyingContract: verifyingContract,
 		},
 		Message: map[string]interface{}{
