@@ -90,13 +90,21 @@ func (s *Signer) Sign(messageHash []byte) (string, error) {
 // This is used for signing structured data like Safe transactions
 // messageHash should be the 32-byte hash of the EIP-712 typed data
 // Returns the signature as a hex string with "0x" prefix
+// NOTE: This applies EIP-191 prefix to match Python implementation behavior
 func (s *Signer) SignEIP712StructHash(messageHash []byte) (string, error) {
 	if len(messageHash) != 32 {
 		return "", errors.NewRelayerClientError("message hash must be 32 bytes", nil)
 	}
 
-	// Sign the hash directly (without EIP-191 prefix)
-	signature, err := crypto.Sign(messageHash, s.privateKey)
+	// Apply EIP-191 prefix: "\x19Ethereum Signed Message:\n32" + messageHash
+	// This matches the Python implementation's encode_defunct behavior
+	prefixedHash := crypto.Keccak256Hash(
+		[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(messageHash))),
+		messageHash,
+	)
+
+	// Sign the prefixed hash
+	signature, err := crypto.Sign(prefixedHash.Bytes(), s.privateKey)
 	if err != nil {
 		return "", errors.ErrSigningFailed(err)
 	}
