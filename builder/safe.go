@@ -161,8 +161,10 @@ func CreateSafeSignature(args *models.SafeTransactionArgs, sig *signer.Signer) (
 	log.Printf("DEBUG: Safe address: %s", args.SafeAddress)
 	log.Printf("DEBUG: Nonce: %s", args.Nonce)
 
-	// Sign the struct hash using SignEIP712StructHash (applies EIP-191 prefixing like Python)
-	signature, err := sig.SignEIP712StructHash(structHash.Bytes())
+	// Sign the struct hash using standard signing (matching SAFE-CREATE behavior)
+	// The V value will be transformed to 31/32 in SplitAndPackSig, which tells Safe's contract
+	// to apply EIP-191 prefix during signature recovery
+	signature, err := sig.Sign(structHash.Bytes())
 	if err != nil {
 		return "", err
 	}
