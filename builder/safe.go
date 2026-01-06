@@ -2,6 +2,7 @@ package builder
 
 import (
 	"encoding/json"
+	"log"
 	"math/big"
 	"strings"
 
@@ -155,11 +156,18 @@ func CreateSafeSignature(args *models.SafeTransactionArgs, sig *signer.Signer) (
 		return "", err
 	}
 
+	// Debug logging
+	log.Printf("DEBUG: EIP-712 struct hash to sign: %s", structHash.Hex())
+	log.Printf("DEBUG: Safe address: %s", args.SafeAddress)
+	log.Printf("DEBUG: Nonce: %s", args.Nonce)
+
 	// Sign the struct hash using EIP-712 signing
 	signature, err := sig.SignEIP712StructHash(structHash.Bytes())
 	if err != nil {
 		return "", err
 	}
+
+	log.Printf("DEBUG: Generated signature: %s", signature)
 
 	return signature, nil
 }
